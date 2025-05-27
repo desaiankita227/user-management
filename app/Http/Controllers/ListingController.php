@@ -2,13 +2,9 @@
 
 namespace App\Http\Controllers;
 
-use App\Http\Requests\ProfileUpdateRequest;
 use App\Models\Listing;
-use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Redirect;
-use Illuminate\View\View;
+use DataTables;
 
 class ListingController extends Controller
 {
@@ -23,29 +19,29 @@ class ListingController extends Controller
             $model = Listing::query();
 
             return DataTables::eloquent($model)
-                ->addColumn('action', function (Tool $row) {
+                ->addColumn('action', function (Listing $row) {
                     return view(
-                        "admin.partials.action",
+                        "partials.action",
                         [
-                            'currentRoute'  => $this->moduleRouteText,
+                            'currentRoute'  => "listings",
                             'row'           => $row,
                             'isDelete'      => 1,
                             'isEdit'        => 1,
                         ]
                     )->render();
                 })
-                ->editColumn('screen_image', function ($row) {
-                    if($row->screen_image){
-                        $file_path  =   env('CLOUD_FRONT_URL').'/'.$this->path.$row->id.'/'.$row->screen_image;
-                        return '<img src=" ' . $file_path . ' " width="100px" height="100px" class="img-thumbnail" alt="image">';
-                    }
-                })
-                ->rawColumns(['action', 'screen_image'])
+                // ->editColumn('screen_image', function ($row) {
+                //     if($row->screen_image){
+                //         $file_path  =   env('CLOUD_FRONT_URL').'/'.$this->path.$row->id.'/'.$row->screen_image;
+                //         return '<img src=" ' . $file_path . ' " width="100px" height="100px" class="img-thumbnail" alt="image">';
+                //     }
+                // })
+                // ->rawColumns(['action', 'screen_image'])
+                ->rawColumns(['action'])
                 ->make(true);
         } else {
-            $data['module']     = $this->module;
-            $data['page_title'] = "List";
-            return view($this->moduleViewName . '.index', $data);
+            $data = array();
+            return view('listing.index', $data);
         }
     }
 

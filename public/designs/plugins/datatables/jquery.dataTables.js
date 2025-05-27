@@ -1,0 +1,1 @@
+<script src="https://cdnjs.cloudflare.com/ajax/libs/datatables/1.10.12/js/jquery.dataTables.min.js" integrity="sha512-JSdvzvKEAXKggB5Zoh4JTEKon1nRt6JXJE3bEEtYUyqfBZCFWMcYWyaoJraRIPmj9C7C9IXbwLuXK/jJ3ztitQ==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>

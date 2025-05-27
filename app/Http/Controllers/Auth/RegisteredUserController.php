@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
+use App\Jobs\SendMailJob;
 use App\Models\User;
 use App\Providers\RouteServiceProvider;
 use Illuminate\Auth\Events\Registered;
@@ -47,6 +48,23 @@ class RegisteredUserController extends Controller
         event(new Registered($user));
 
         Auth::login($user);
+
+        // Dispatch a job to send a welcome email
+        // SendMailJob::dispatch(
+        //     $user->email,
+        //     ['name' => $user->name],
+        //     'emails.welcome',
+        //     'Welcome to Our Platform'
+        // );
+
+        $data = array(
+            'name'=>$user->name
+        );
+        $tomail = $user->email;
+        $template = 'bookingrequest';
+        $subject = 'You have Received a Request!';
+        // Commonhelper::sendmail($tomail,$data,$template,$subject);
+        dispatch(new SendMailJob($tomail,$data,$template,$subject));
 
         return redirect(RouteServiceProvider::HOME);
     }
