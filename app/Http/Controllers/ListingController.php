@@ -2,12 +2,28 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\ListingRequest;
 use App\Models\Listing;
+use App\Models\User;
 use Illuminate\Http\Request;
 use DataTables;
 
 class ListingController extends Controller
 {
+    /**
+     * Constructor for the class.
+    */
+    public function __construct()
+    {
+        $this->moduleRouteText  = "listings";
+        $this->moduleViewName   = "listing";
+        $this->list_url         = route($this->moduleRouteText . ".index");
+        $module                 = "Listings";
+        $this->module           = $module;
+        $this->modelObj         = new Listing();
+        $this->path             = "listing/";
+    }
+
     /**
      * Display a listing of the resource.
      *
@@ -52,6 +68,11 @@ class ListingController extends Controller
      */
     public function create()
     {
+        // Get all usersof agent role
+        $users = User::whereHas('roles', function ($query) {
+            $query->where('name', 'agent');
+        })->pluck('name', 'id'); // key = id, value = name
+
         $data = array(
             "formObj"            => $this->modelObj,
             "module"             => $this->module,
@@ -61,7 +82,8 @@ class ListingController extends Controller
             "method"             => "POST",
             "image_type"         => ["single" => "Single Image", "multiple" => "Image with Time Slot"],
             "selectedImageType"  => null,
-            "section"            => 0
+            "section"            => 0,
+            'users'            => $users,
         );
 
         return view($this->moduleViewName . '.create', $data);
@@ -73,19 +95,17 @@ class ListingController extends Controller
      * @param  \Illuminate\Http\Request  $request
      * @return \Illuminate\Http\Response
      */
-    public function store(ToolRequest $request)
+    public function store(ListingRequest $request)
     {
         // return $request;
-        $tool = new Tool();
-        $tool->slug           = Str::slug($request->title);
-        $tool->title          = $request->title;
-        $tool->k_title        = $request->korean_title;
-        $tool->sequence       = Commonhelper::maxToolSequence();
-        $tool->information    = $request->information;
-        $tool->k_information  = $request->k_information;
-        $tool->save();
+        $listing = new Listing();
+        $listing->title = $request->title;
+        $listing->description = $request->description;
+        $listing->user_id = $request->user_id;
+        $listing->price = $request->price ?? 0;
+        $listing->save();
 
-        $tool_id = $tool->id;
+        $listing_id = $listing->id;
         if( $request->has('screen_image') && $request->file('screen_image') )
         {
             $imageFile = $request->file('screen_image');
@@ -99,59 +119,7 @@ class ListingController extends Controller
             }
         }
 
-        if($request->has('tool_audio') && $request->tool_audio != null && $request->has('k_tool_audio') && $request->k_tool_audio != null)
-        {
-            $toolMedia = new ToolMedia();
-            $toolMedia->tool_id = $tool_id;
-            $toolMedia->image_type = $request->image_type;
-            if($request->has('tool_audio'))
-            {
-                $file = $request->file('tool_audio');
-                $audio = AwsHelper::UploadFileS3('audio',$file,$this->path.$tool_id.'/',null,$tool_id);
-             
-                $fileName = $audio['fileName'];
-                
-                if ($audio['code'] == 200) {
-                    $toolMedia->tool_audio = $fileName;
-                }
-            }   
-
-            if($request->has('k_tool_audio'))
-            {
-                $file = $request->file('k_tool_audio');
-                $audio = AwsHelper::UploadFileS3('audio',$file,$this->path.$tool_id.'/',null,$tool_id);
-             
-                $fileName = $audio['fileName'];
-                
-                if ($audio['code'] == 200) {
-                    $toolMedia->k_tool_audio = $fileName;
-                }
-            }
-            if($request->has('image_type') && $request->image_type == "single" &&  $request->has('audio_display_image') && $request->file('audio_display_image') ) {
-                $imageFile = $request->file('audio_display_image');
-                $image = AwsHelper::UploadFileS3('image',$imageFile,$this->path.$tool_id.'/',null,$tool_id);
-    
-                $fileName = $image['fileName'];
-                
-                if ($image['code'] == 200) {
-                    $toolMedia->audio_display_image = $fileName;
-                }
-            } else if($request->has('image_type') && $request->image_type == "multiple"){
-                $timeline = [];
-                foreach ($request->file('slot_image') as $key => $imageFile) {
-                    $image = AwsHelper::UploadFileS3('image',$imageFile,$this->path.$tool_id.'/',null,$tool_id);
-                    $timeline[$key]['start_time'] = $request->start_time[$key];
-                    $timeline[$key]['end_time']   = $request->end_time[$key];
-                    $timeline[$key]['ko_start_time'] = $request->ko_start_time[$key];
-                    $timeline[$key]['ko_end_time']   = $request->ko_end_time[$key];
-                    $timeline[$key]['image'] = $image['fileName'];
-                }
-                $timelineJson = json_encode($timeline);
-                $toolMedia->timeline = $timelineJson;
-            }
-            $toolMedia->save();
-        }
-        return redirect()->route($this->moduleViewName . '.index')->with('success', __('messages.create_message', ['title' => 'tool']));
+        return redirect()->route( 'listings.index')->with('success', __('messages.create_message', ['title' => 'tool']));
     }
 
     /**
@@ -350,14 +318,14 @@ class ListingController extends Controller
      */
     public function destroy($id)
     {
-        $tool = Tool::find($id);
+        $ḷisting = Listing::find($id);
 
-        $path = $this->path.$id.'/';
-        if(!empty($tool->screen_image)) {
-            $file = AwsHelper::deleteDirectoryS3($path);
-        }
-        $tool->delete();
-        $toolMedia = ToolMedia::where('tool_id',$id)->delete();
+        // $path = $this->path.$id.'/';
+        // if(!empty($tool->screen_image)) {
+        //     $file = AwsHelper::deleteDirectoryS3($path);
+        // }
+        $ḷisting->delete();
+        // $toolMedia = ToolMedia::where('tool_id',$id)->delete();
         return response()->json(['code' => 200, 'message' => __('messages.delete_message', ['title' => 'Tool']), 'data' => array()]);
     }
     public function updateSequence(Request $request)
